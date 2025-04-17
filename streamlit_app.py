@@ -1,11 +1,19 @@
+# streamlit_app.py
+
 import os
 import pandas as pd
-import openai
 import streamlit as st
+from openai import OpenAI
 
 # —————— CONFIG ——————
-# You can also use st.secrets["OPENAI_API_KEY"] when deployed on Streamlit Cloud
-openai.api_key = os.getenv("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")
+# Locally: set OPENAI_API_KEY in your shell.
+# On Streamlit Cloud: put it under Settings → Secrets → OPENAI_API_KEY
+api_key = os.getenv("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")
+if not api_key:
+    st.error("Chyba: Nenalezeno OPENAI_API_KEY. Nastavte ho jako env var nebo v Streamlit Secrets.")
+    st.stop()
+
+client = OpenAI(api_key=api_key)
 
 SYSTEM_PROMPT = """
 Jsi specializovaný asistent, který zpracovává Excelové tabulky obsahující následující sloupce:
@@ -62,8 +70,8 @@ Z toho je YYY servisních (uvedeno za lomítkem).
 Dodrž tento formát a neposílej uživateli žádné další „programátorské“ instrukce. V odpovědi poskytni pouze hotový report.
 """
 
-# —————— UI ——————
-st.set_page_config(page_title="Lead Analysis", layout="centered")
+# —————— STREAMLIT UI ——————
+st.set_page_config(page_title="Lead‑Analysis", layout="centered")
 st.title("📊 Lead‑Analysis")
 
 uploaded_file = st.file_uploader("Nahraj Excel (xls/xlsx)", type=["xls", "xlsx"])
@@ -71,28 +79,35 @@ uploaded_file = st.file_uploader("Nahraj Excel (xls/xlsx)", type=["xls", "xlsx"]
 if st.button("Spustit analýzu"):
     if not uploaded_file:
         st.warning("Nejprve nahrajte soubor.")
-    else:
+        st.stop()
+
+    # 1) Load Excel
+    try:
+        df = pd.read_excel(uploaded_file, sheet_name="Board")
+    except Exception as e:
+        st.error(f"Chyba při čtení Excelu: {e}")
+        st.stop()
+
+    # 2) Serialize data for the assistant
+    records = df.to_dict(orient="records")
+    messages = [
+        {"role": "system",  "content": SYSTEM_PROMPT},
+        {"role": "user",    "content": f"Data ve formátu JSON:\n{records}"}
+    ]
+
+    # 3) Call OpenAI
+    with st.spinner("Analyzuji…"):
         try:
-            df = pd.read_excel(uploaded_file, sheet_name="Board")
-        except Exception as e:
-            st.error(f"Chyba při čtení Excelu: {e}")
-            st.stop()
-
-        # → prepare assistant payload
-        records = df.to_dict(orient="records")
-        messages = [
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user",   "content": f"Data ve formátu JSON:\n{records}"}
-        ]
-
-        with st.spinner("Analyzuji…"):
-            completion = openai.ChatCompletion.create(
+            completion = client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=messages,
                 temperature=0
             )
-            report = completion.choices[0].message.content.strip()
+        except Exception as e:
+            st.error(f"Chyba API: {e}")
+            st.stop()
 
-        # → display result
-        st.subheader("📈 Výstupní report")
-        st.markdown(report)
+    # 4) Show report
+    report = completion.choices[0].message.content.strip()
+    st.subheader("📈 Výstupní report")
+    st.markdown(report)
