@@ -8,7 +8,7 @@ from openai import OpenAI
 # —————— CONFIG ——————
 # Locally: set OPENAI_API_KEY in your shell.
 # On Streamlit Cloud: put it under Settings → Secrets → OPENAI_API_KEY
-api_key = os.getenv("OPEN_API_KEY")
+api_key = os.getenv("OPENAI_API_KEY")
 if not api_key:
     st.error("Chyba: Nenalezeno OPENAI_API_KEY. Nastavte ho jako env var nebo v Streamlit Secrets.")
     st.stop()
