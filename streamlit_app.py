@@ -5,7 +5,7 @@ import streamlit as st
 
 # —————— CONFIG ——————
 # You can also use st.secrets["OPENAI_API_KEY"] when deployed on Streamlit Cloud
-openai.api_key = os.getenv("OPENAI_API_KEY")
+openai.api_key = os.getenv("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")
 
 SYSTEM_PROMPT = """
 Jsi specializovaný asistent, který zpracovává Excelové tabulky obsahující následující sloupce:
